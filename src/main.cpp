@@ -7,17 +7,7 @@
 #include <fstream>
 #include <sstream>
 
-static void GLClearError() {
-    while (glGetError() != GL_NO_ERROR);
-}
-
-static bool GLOLogCall() {
-    while (GLenum error = glGetError()) {
-        std::cout << "[OpenGL Error] (" << error << ")" << std::endl;
-        return false;
-    }
-    return true;
-}
+#include "Renderer.h"
 
 struct ShaderProgramSource {
     std::string VertexSource;
@@ -100,6 +90,12 @@ int main(void)
     if (!glfwInit())
         return -1;
 
+
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
     /* Create a windowed mode window and its OpenGL context */
     window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
     if (!window)
@@ -130,13 +126,17 @@ int main(void)
         2, 3, 0
     };
 
+    unsigned int vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
     unsigned int buffer; // Buffer ID
     glGenBuffers(1, &buffer); // Generate buffer
     glBindBuffer(GL_ARRAY_BUFFER, buffer); // Select buffer
     glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(float), positions, GL_STATIC_DRAW); // Fill buffer
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0); // Define vertex attribute
     glEnableVertexAttribArray(0); // Enable vertex attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0); // Define vertex attribute
  
 
     unsigned int ibo; // Buffer ID
@@ -148,6 +148,10 @@ int main(void)
     unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource);
     glUseProgram(shader);
 
+    glUseProgram(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
 
     float g = 0.0f;
     float increment = 0.05f;
@@ -156,6 +160,14 @@ int main(void)
     {
         // /* Render here */
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(shader);
+        glUniform4f(glGetUniformLocation(shader, "u_Color"), 0.3f, g, 0.8f, 1.0f);
+
+        glBindBuffer(GL_ARRAY_BUFFER, buffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0); // Define vertex attribute
 
         glUniform4f(glGetUniformLocation(shader, "u_Color"), 0.3f, g, 0.8f, 1.0f);
 
@@ -168,7 +180,7 @@ int main(void)
         g+=increment;
 
         // glDrawArrays(GL_TRIANGLES, 0, 3); when not using index buffer
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
